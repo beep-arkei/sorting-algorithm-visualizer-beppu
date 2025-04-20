@@ -15,6 +15,15 @@ import pygame
 import random
 import os
 import math
+import sys
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # change working directory to program's location
 os.chdir(os.path.dirname(__file__))
@@ -455,7 +464,7 @@ def draw_sidebar(draw_info, offset=100):
         text = draw_info.FONT.render(text_str, True, draw_info.WHITE)
         button_rect = pygame.Rect(20, top, draw_info.SIDE_MENU_WIDTH - 40, text.get_height() + 10)
         
-        if button_rect.collidepoint(mouse_pos):
+        if (button_rect.collidepoint(mouse_pos) or name == draw_info.sorting_algo_name):  
             pygame.draw.rect(draw_info.window, draw_info.LIGHT_GRAY, button_rect, border_radius=5)
         else:
             pygame.draw.rect(draw_info.window, draw_info.DARK_GRAY, button_rect, border_radius=5)
@@ -590,27 +599,35 @@ def main():
             elif event.key == pygame.K_1 and not sorting:
                 sorting_algorithm = bubble_sort
                 sorting_algo_name = "Bubble Sort"
+                draw_info.sorting_algo_name = "Bubble Sort"
             elif event.key == pygame.K_2 and not sorting:
                 sorting_algorithm = selection_sort
                 sorting_algo_name = "Selection Sort"
+                draw_info.sorting_algo_name = "Selection Sort"
             elif event.key == pygame.K_3 and not sorting:
                 sorting_algorithm = insertion_sort
                 sorting_algo_name = "Insertion Sort"
+                draw_info.sorting_algo_name = "Insertion Sort"
             elif event.key == pygame.K_4 and not sorting:
                 sorting_algorithm = quick_sort
                 sorting_algo_name = "Quick Sort"
+                draw_info.sorting_algo_name = "Quick Sort"
             elif event.key == pygame.K_5 and not sorting:
                 sorting_algorithm = merge_sort
                 sorting_algo_name = "Merge Sort"
+                draw_info.sorting_algo_name = "Merge Sort"
             elif event.key == pygame.K_6 and not sorting:
                 sorting_algorithm = heap_sort
                 sorting_algo_name = "Heap Sort"
+                draw_info.sorting_algo_name = "Heap Sort"
             elif event.key == pygame.K_7 and not sorting:
                 sorting_algorithm = cocktail_shaker_sort
                 sorting_algo_name = "Cocktail Shaker Sort"
+                draw_info.sorting_algo_name = "Cocktail Shaker Sort"
             elif event.key == pygame.K_8 and not sorting:
                 sorting_algorithm = bogo_sort
                 sorting_algo_name = "Bogo Sort"
+                draw_info.sorting_algo_name = "Bogo Sort"
 
             elif event.key == pygame.K_ESCAPE:
                 run = False
