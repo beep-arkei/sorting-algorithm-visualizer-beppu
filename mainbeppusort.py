@@ -97,7 +97,7 @@ class DrawInformation:
         self.width = width
         self.height = height
         self.window = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("beep's Sorting Algorithm Visualizer")
+        pygame.display.set_caption("bepsort - beep's Sorting Algorithm Visualizer")
         self.icon = pygame.image.load("icon.png")
         self.icon = pygame.transform.scale(self.icon, (60, 60))
         self.set_list(lst)
@@ -121,7 +121,7 @@ def draw(draw_info, sorting_algo_name, ascending):
     pygame.draw.rect(draw_info.window, draw_info.HEADER, (0, 0, draw_info.width, HEADER_HEIGHT))
 
     draw_info.window.blit(draw_info.icon, (5, 5))
-    title = draw_info.LARGE_FONT.render("beep's Sorter", 1, draw_info.WHITE)
+    title = draw_info.LARGE_FONT.render("bepsort", 1, draw_info.WHITE)
     draw_info.window.blit(title, (70, HEADER_HEIGHT//2 - title.get_height()//2))
 
     title = draw_info.LARGE_FONT.render(f"{sorting_algo_name}", 1, draw_info.PINK_LIGHT)
