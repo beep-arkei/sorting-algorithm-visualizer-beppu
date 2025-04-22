@@ -331,17 +331,19 @@ def bubble_sort(draw_info, ascending=True):
 
 def selection_sort(draw_info, ascending=True):
     lst = draw_info.lst
-
     for i in range(len(lst)):
         min_index = i
-
         for j in range(i + 1, len(lst)):
+            draw_list(draw_info, {min_index: draw_info.SWAP1, j: draw_info.SWAP2}, True)
+            yield True
+            
             num1 = lst[min_index]
             num2 = lst[j]
-
             if (num1 > num2 and ascending) or (num1 < num2 and not ascending):
                 min_index = j
-
+                draw_list(draw_info, {min_index: draw_info.SWAP1}, True)
+                yield True
+                
         lst[i], lst[min_index] = lst[min_index], lst[i]
         draw_list(draw_info, {i: draw_info.SWAP1, min_index: draw_info.SWAP2}, True)
         yield True
@@ -401,6 +403,10 @@ def merge_sort(draw_info, ascending=True):
     def merge_sort_helper(start, end):
         if end - start > 1:
             mid = (start + end) // 2
+            
+            draw_list(draw_info, {mid: draw_info.SWAP1}, True)
+            yield True
+            
             yield from merge_sort_helper(start, mid)
             yield from merge_sort_helper(mid, end)
             
@@ -410,26 +416,33 @@ def merge_sort(draw_info, ascending=True):
             k = start
             
             while i < len(left) and j < len(right):
+                draw_list(draw_info, {
+                    start + i: draw_info.SWAP1,
+                    mid + j: draw_info.SWAP2
+                }, True)
+                yield True
+                
                 if (left[i] < right[j] and ascending) or (left[i] > right[j] and not ascending):
                     lst[k] = left[i]
                     i += 1
                 else:
                     lst[k] = right[j]
                     j += 1
-                draw_list(draw_info, {k: draw_info.SWAP1}, True)
+                
+                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
                 yield True
                 k += 1
                 
             while i < len(left):
                 lst[k] = left[i]
-                draw_list(draw_info, {k: draw_info.SWAP1}, True)
+                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
                 yield True
                 i += 1
                 k += 1
                 
             while j < len(right):
                 lst[k] = right[j]
-                draw_list(draw_info, {k: draw_info.SWAP1}, True)
+                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
                 yield True
                 j += 1
                 k += 1
