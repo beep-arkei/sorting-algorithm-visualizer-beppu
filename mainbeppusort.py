@@ -10,12 +10,16 @@
 # Heap Sort
 # Bogo Sort
 # Cocktail Shaker Sort
+# Radix Sort
+# Shell Sort
+# Gnome Sort
 
 import pygame
 import random
 import os
 import math
 import sys
+import time
 
 def resource_path(relative_path):
     try:
@@ -60,9 +64,15 @@ class DrawInformation:
     VIOLET = 150, 90, 220
     CYAN = 80, 200, 255
     HOT_PINK = 255, 80, 160
+    YELLOW = 255, 220, 100
+    ORANGE = 255, 150, 50
 
-    SWAP1 = PINK_DARK;
-    SWAP2 = HOT_PINK;
+    # Colors for highlighting during sorting
+    CURRENT = YELLOW
+    COMPARING = CYAN
+    SWAP1 = PINK_DARK
+    SWAP2 = HOT_PINK
+    SORTED = GREEN
 
     GRADIENTS = [
         BLUE,
@@ -86,6 +96,7 @@ class DrawInformation:
     BIG_FONT = pygame.font.Font(ROBOTO, 30)
     LARGE_FONT = pygame.font.Font(VIGA, 25)
     SEMI_FONT = pygame.font.Font(VIGA, 20)
+    TINY_FONT = pygame.font.Font(ROBOTO, 10)
 
     BACKGROUND_COLOR = BACKGROUND
 
@@ -103,6 +114,11 @@ class DrawInformation:
         self.set_list(lst)
         self.SIDE_MENU_WIDTH = DrawInformation.SIDE_MENU_WIDTH
         self.manual_mode = False
+        
+        # Timer variables
+        self.sorting_start_time = 0
+        self.sorting_elapsed_time = 0
+        self.is_sorting_active = False
 
     def set_list(self, lst):
         self.lst = lst
@@ -112,6 +128,55 @@ class DrawInformation:
         self.block_width = round((self.width -self.SIDE_PAD) / len(lst))
         self.block_height = math.floor((self.height - self.TOP_PAD) / (self.max_val - self.min_val))
         self.start_x = self.SIDE_MENU_WIDTH + 25
+
+    def start_sorting_timer(self):
+        """Start the sorting timer"""
+        self.sorting_start_time = time.time()
+        self.sorting_elapsed_time = 0
+        self.is_sorting_active = True
+
+    def stop_sorting_timer(self):
+        """Stop the sorting timer"""
+        if self.is_sorting_active:
+            self.sorting_elapsed_time = time.time() - self.sorting_start_time
+            self.is_sorting_active = False
+
+    def update_sorting_timer(self):
+        """Update the elapsed time if sorting is active"""
+        if self.is_sorting_active:
+            self.sorting_elapsed_time = time.time() - self.sorting_start_time
+
+    def reset_sorting_timer(self):
+        """Reset the sorting timer"""
+        self.sorting_start_time = 0
+        self.sorting_elapsed_time = 0
+        self.is_sorting_active = False
+
+def factorial(n):
+    if n <= 1:
+        return 1
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+
+def draw_timer(draw_info):
+    timer_text = f"Time: {draw_info.sorting_elapsed_time:.2f}s"
+    timer_surface = draw_info.FONT.render(timer_text, True, draw_info.WHITE)
+    
+    # Position at bottom left with some padding
+    timer_rect = timer_surface.get_rect()
+    timer_rect.bottomleft = (20, draw_info.height - 20)
+    
+    # Draw a semi-transparent background for better visibility
+    bg_rect = timer_rect.inflate(20, 10)
+    bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+    bg_surface.set_alpha(128)
+    bg_surface.fill(draw_info.DARK_GRAY)
+    draw_info.window.blit(bg_surface, bg_rect)
+    
+    # Draw the timer text
+    draw_info.window.blit(timer_surface, timer_rect)
 
 def draw(draw_info, sorting_algo_name, ascending):
     draw_info.window.fill(draw_info.BACKGROUND_COLOR)
@@ -130,12 +195,55 @@ def draw(draw_info, sorting_algo_name, ascending):
     ascending_text = draw_info.SEMI_FONT.render("Ascending" if ascending else "Descending", 1, draw_info.CYAN if ascending else draw_info.PINK_PURPLE)
     draw_info.window.blit(ascending_text, (draw_info.width/2 - ascending_text.get_width()/2, 35))
 
+    # Add Bogo Sort probability information
+    if sorting_algo_name == "Bogo Sort":
+        n = len(draw_info.lst)
+        probability = 1.0 / factorial(n)
+        current_fps = int(5 + draw_info.speed_value * 95)
+        
+        # Calculate estimated time in seconds
+        expected_iterations = factorial(n)
+        estimated_seconds = expected_iterations / current_fps
+        
+        # Format time with commas and appropriate units
+        if estimated_seconds < 60:
+            time_str = f"{estimated_seconds:,.1f} seconds"
+        elif estimated_seconds < 3600:
+            time_str = f"{estimated_seconds/60:,.1f} minutes"
+        elif estimated_seconds < 86400:
+            time_str = f"{estimated_seconds/3600:,.1f} hours"
+        elif estimated_seconds < 31536000:
+            time_str = f"{estimated_seconds/86400:,.1f} days"
+        else:
+            time_str = f"{estimated_seconds/31536000:,.1f} years"
+        
+        # Format probability as percentage and decimal
+        probability_percent = probability * 100
+        if probability_percent >= 0.001:
+            prob_str = f"{probability_percent:.6f}% ({probability:.6f})"
+        else:
+            prob_str = f"{probability_percent:.2e}% ({probability:.2e})"
+        
+        prob_text = draw_info.FONT.render(f"Probability of Solving per Iteration: {prob_str}", 1, draw_info.WHITE)
+        time_text = draw_info.FONT.render(f"Estimated Time to Solve: {time_str}", 1, draw_info.WHITE)
+    
+        text_height = draw_info.FONT.get_height()
+        prob_rect = prob_text.get_rect(center=(draw_info.width/2, 60 + text_height))
+        time_rect = time_text.get_rect(center=(draw_info.width/2, 80 + text_height))
+        
+        draw_info.window.blit(prob_text, prob_rect)
+        draw_info.window.blit(time_text, time_rect)
+
     credits_text = draw_info.FONT.render("credits to Tech With Tim", 1, draw_info.LIGHT_GRAY)
     credits_rect = credits_text.get_rect(right=draw_info.width-20, centery=HEADER_HEIGHT//2)
     draw_info.window.blit(credits_text, credits_rect)
 
     clickable_buttons, slider_rects = draw_sidebar(draw_info, offset = HEADER_HEIGHT)
     draw_list(draw_info, offset = HEADER_HEIGHT)
+    
+    # Draw the timer
+    draw_timer(draw_info)
+    
     pygame.display.update()
 
     return clickable_buttons, slider_rects, credits_rect
@@ -173,11 +281,11 @@ def draw_list(draw_info, color_positions={}, clear_bg=False, offset=100):
 
             if i in color_positions:
                 text_color = color_positions[i]
-            if len(lst) >90:
+            if len(lst) > 90:
                 number_text = draw_info.MICRO_FONT.render(str(val), 1, text_color)
-            elif len(lst) >50:
+            elif len(lst) > 50:
                 number_text = draw_info.SMALL_FONT.render(str(val), 1, text_color)
-            elif len(lst) >30:
+            elif len(lst) > 30:
                 number_text = draw_info.FONT.render(str(val), 1, text_color)
             else:
                 number_text = draw_info.BIG_FONT.render(str(val), 1, text_color)
@@ -212,7 +320,10 @@ def draw_sidebar(draw_info, offset=100):
         ("Merge Sort (5)", merge_sort, "Merge Sort"),
         ("Heap Sort (6)", heap_sort, "Heap Sort"),
         ("Cocktail Sort (7)", cocktail_shaker_sort, "Cocktail Shaker Sort"),
-        ("Bogo Sort (8)", bogo_sort, "Bogo Sort")
+        ("Radix Sort (8)", radix_sort, "Radix Sort"),
+        ("Shell Sort (9)", shell_sort, "Shell Sort"),
+        ("Gnome Sort (0)", gnome_sort, "Gnome Sort"),
+        ("Bogo Sort (B)", bogo_sort, "Bogo Sort")
     ]
 
     top = offset + 20
@@ -237,13 +348,11 @@ def draw_sidebar(draw_info, offset=100):
         draw_info.window.blit(text, text_rect)
         
         clickable_buttons.append((button_rect, action, None))
-        top += button_rect.height + 15
+        top += button_rect.height + 10  # Reduced spacing
     
     slider_label1 = draw_info.FONT.render("Array Size - " + f"{len(draw_info.lst)}", True, draw_info.WHITE)
     draw_info.window.blit(slider_label1, (20, top))
     top += slider_label1.get_height() + 10
-
-    #Sliders for array size and speed (tbh mostly copy pasted)
 
     # Calculate slider handle positions based on current values
     size_value = getattr(draw_info, 'size_value', 0.5)
@@ -283,11 +392,21 @@ def draw_sidebar(draw_info, offset=100):
 
     algo_header = draw_info.SEMI_FONT.render("Algorithms", True, draw_info.WHITE)
     draw_info.window.blit(algo_header, (20, top))
-    top += algo_header.get_height() + 15
+    top += algo_header.get_height() + 10
+
+    available_height = draw_info.height - top - 20
+    button_height = min(30, available_height // len(algorithms))
+    font_size = min(20, button_height - 5)
+    
+    algo_font = draw_info.FONT
+    if font_size < 15:
+        algo_font = draw_info.SMALL_FONT
+    if font_size < 12:
+        algo_font = draw_info.MICRO_FONT
 
     for text_str, func, name in algorithms:
-        text = draw_info.FONT.render(text_str, True, draw_info.WHITE)
-        button_rect = pygame.Rect(20, top, draw_info.SIDE_MENU_WIDTH - 40, text.get_height() + 10)
+        text = algo_font.render(text_str, True, draw_info.WHITE)
+        button_rect = pygame.Rect(20, top, draw_info.SIDE_MENU_WIDTH - 40, button_height)
         
         if (button_rect.collidepoint(mouse_pos) or name == draw_info.sorting_algo_name):  
             pygame.draw.rect(draw_info.window, draw_info.LIGHT_GRAY, button_rect, border_radius=5)
@@ -301,7 +420,7 @@ def draw_sidebar(draw_info, offset=100):
         draw_info.window.blit(text, text_rect)
         
         clickable_buttons.append((button_rect, func, name))
-        top += button_rect.height + 15
+        top += button_rect.height + 5  # Reduced spacing
 
     return clickable_buttons, slider_rects
 
@@ -322,10 +441,23 @@ def bubble_sort(draw_info, ascending=True):
             num1 = lst[j]
             num2 = lst[j + 1]
 
+            # Highlight the elements being compared
+            draw_list(draw_info, {j: draw_info.COMPARING, j + 1: draw_info.COMPARING}, True)
+            yield True
+
             if (num1 > num2 and ascending) or (num1 < num2 and not ascending):
                 lst[j], lst[j + 1] = lst[j + 1], lst[j]
                 draw_list(draw_info, {j: draw_info.SWAP1, j + 1: draw_info.SWAP2}, True)
                 yield True
+        
+        # Mark the sorted element
+        draw_list(draw_info, {len(lst) - i - 1: draw_info.SORTED}, True)
+        yield True
+    
+    # Mark the last element as sorted
+    draw_list(draw_info, {0: draw_info.SORTED}, True)
+    yield True
+    
     return lst
 
 
@@ -333,19 +465,29 @@ def selection_sort(draw_info, ascending=True):
     lst = draw_info.lst
     for i in range(len(lst)):
         min_index = i
+        
+        # Highlight current position
+        draw_list(draw_info, {i: draw_info.CURRENT}, True)
+        yield True
+        
         for j in range(i + 1, len(lst)):
-            draw_list(draw_info, {min_index: draw_info.SWAP1, j: draw_info.SWAP2}, True)
+            # Highlight element being compared
+            draw_list(draw_info, {min_index: draw_info.CURRENT, j: draw_info.COMPARING}, True)
             yield True
             
             num1 = lst[min_index]
             num2 = lst[j]
             if (num1 > num2 and ascending) or (num1 < num2 and not ascending):
                 min_index = j
-                draw_list(draw_info, {min_index: draw_info.SWAP1}, True)
+                draw_list(draw_info, {min_index: draw_info.CURRENT}, True)
                 yield True
                 
         lst[i], lst[min_index] = lst[min_index], lst[i]
         draw_list(draw_info, {i: draw_info.SWAP1, min_index: draw_info.SWAP2}, True)
+        yield True
+        
+        # Mark sorted element
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
         yield True
 
     return lst
@@ -353,19 +495,39 @@ def selection_sort(draw_info, ascending=True):
 def insertion_sort(draw_info, ascending=True):
     lst = draw_info.lst
 
-    for i in range (1, len(lst)):
+    for i in range(1, len(lst)):
         current = lst[i]
-
-        while True:
-            ascending_sort = i > 0 and lst[i - 1] > current and ascending
-            descending_sort = i > 0 and lst[i - 1] < current and not ascending
+        
+        # Highlight current element
+        draw_list(draw_info, {i: draw_info.CURRENT}, True)
+        yield True
+        
+        j = i
+        while j > 0:
+            # Highlight element being compared
+            draw_list(draw_info, {j: draw_info.CURRENT, j-1: draw_info.COMPARING}, True)
+            yield True
+            
+            ascending_sort = lst[j - 1] > current and ascending
+            descending_sort = lst[j - 1] < current and not ascending
+            
             if not ascending_sort and not descending_sort:
                 break
-            lst[i] = lst[i - 1]
-            i -= 1
-            lst[i] = current
-            draw_list(draw_info, {i - 1: draw_info.SWAP1, i: draw_info.SWAP2}, True)
+                
+            lst[j] = lst[j - 1]
+            j -= 1
+            
+            draw_list(draw_info, {j: draw_info.SWAP1, j+1: draw_info.SWAP2}, True)
             yield True
+            
+        lst[j] = current
+        draw_list(draw_info, {j: draw_info.SWAP1}, True)
+        yield True
+
+    # Mark all elements as sorted at the end
+    for i in range(len(lst)):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
 
     return lst
 
@@ -374,18 +536,32 @@ def quick_sort(draw_info, ascending=True):
 
     def partition(low, high):
         pivot = lst[high]
+        
+        # Highlight pivot
+        draw_list(draw_info, {high: draw_info.CURRENT}, True)
+        yield True
+        
         i = low - 1
 
         for j in range(low, high):
+            # Highlight element being compared with pivot
+            draw_list(draw_info, {j: draw_info.COMPARING, high: draw_info.CURRENT}, True)
+            yield True
+            
             if (lst[j] < pivot and ascending) or (lst[j] > pivot and not ascending):
                 i += 1
                 lst[i], lst[j] = lst[j], lst[i]
-                draw_list(draw_info, {i: draw_info.SWAP1, j: draw_info.SWAP2}, True)
+                draw_list(draw_info, {i: draw_info.SWAP1, j: draw_info.SWAP2, high: draw_info.CURRENT}, True)
                 yield True
 
         lst[i + 1], lst[high] = lst[high], lst[i + 1]
         draw_list(draw_info, {i + 1: draw_info.SWAP1, high: draw_info.SWAP2}, True)
         yield True
+        
+        # Mark pivot in its final position
+        draw_list(draw_info, {i + 1: draw_info.SORTED}, True)
+        yield True
+        
         return i + 1
 
     def quick_sort_helper(low, high):
@@ -393,6 +569,10 @@ def quick_sort(draw_info, ascending=True):
             pi = yield from partition(low, high)
             yield from quick_sort_helper(low, pi - 1)
             yield from quick_sort_helper(pi + 1, high)
+        elif low == high:
+            # Mark single element as sorted
+            draw_list(draw_info, {low: draw_info.SORTED}, True)
+            yield True
 
     yield from quick_sort_helper(0, len(lst) - 1)
     return lst
@@ -404,7 +584,8 @@ def merge_sort(draw_info, ascending=True):
         if end - start > 1:
             mid = (start + end) // 2
             
-            draw_list(draw_info, {mid: draw_info.SWAP1}, True)
+            # Highlight the division point
+            draw_list(draw_info, {mid: draw_info.CURRENT}, True)
             yield True
             
             yield from merge_sort_helper(start, mid)
@@ -415,13 +596,16 @@ def merge_sort(draw_info, ascending=True):
             i = j = 0
             k = start
             
+            # Highlight the subarrays being merged
+            color_positions = {}
+            for idx in range(start, mid):
+                color_positions[idx] = draw_info.COMPARING
+            for idx in range(mid, end):
+                color_positions[idx] = draw_info.CURRENT
+            draw_list(draw_info, color_positions, True)
+            yield True
+            
             while i < len(left) and j < len(right):
-                draw_list(draw_info, {
-                    start + i: draw_info.SWAP1,
-                    mid + j: draw_info.SWAP2
-                }, True)
-                yield True
-                
                 if (left[i] < right[j] and ascending) or (left[i] > right[j] and not ascending):
                     lst[k] = left[i]
                     i += 1
@@ -429,23 +613,28 @@ def merge_sort(draw_info, ascending=True):
                     lst[k] = right[j]
                     j += 1
                 
-                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
+                draw_list(draw_info, {k: draw_info.SWAP1}, True)
                 yield True
                 k += 1
                 
             while i < len(left):
                 lst[k] = left[i]
-                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
+                draw_list(draw_info, {k: draw_info.SWAP1}, True)
                 yield True
                 i += 1
                 k += 1
                 
             while j < len(right):
                 lst[k] = right[j]
-                draw_list(draw_info, {k: draw_info.PINK_LIGHT}, True)
+                draw_list(draw_info, {k: draw_info.SWAP1}, True)
                 yield True
                 j += 1
                 k += 1
+            
+            # Mark the merged subarray as sorted
+            for idx in range(start, end):
+                draw_list(draw_info, {idx: draw_info.SORTED}, True)
+                yield True
     
     yield from merge_sort_helper(0, len(lst))
     return lst
@@ -457,6 +646,15 @@ def heap_sort(draw_info, ascending=True):
         largest = i
         left = 2 * i + 1
         right = 2 * i + 2
+
+        # Highlight the current node and its children
+        color_positions = {i: draw_info.CURRENT}
+        if left < n:
+            color_positions[left] = draw_info.COMPARING
+        if right < n:
+            color_positions[right] = draw_info.COMPARING
+        draw_list(draw_info, color_positions, True)
+        yield True
 
         if left < n and ((lst[left] > lst[largest] and ascending) or (lst[left] < lst[largest] and not ascending)):
             largest = left
@@ -471,14 +669,26 @@ def heap_sort(draw_info, ascending=True):
             yield from heapify(n, largest)
 
     n = len(lst)
+    
+    # Build max heap
     for i in range(n // 2 - 1, -1, -1):
         yield from heapify(n, i)
 
+    # Extract elements from heap one by one
     for i in range(n - 1, 0, -1):
         lst[i], lst[0] = lst[0], lst[i]
         draw_list(draw_info, {0: draw_info.SWAP1, i: draw_info.SWAP2}, True)
         yield True
+        
+        # Mark the sorted element
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
+        
         yield from heapify(i, 0)
+
+    # Mark the last element as sorted
+    draw_list(draw_info, {0: draw_info.SORTED}, True)
+    yield True
 
     return lst
 
@@ -492,7 +702,12 @@ def cocktail_shaker_sort(draw_info, ascending=True):
     while swapped:
         swapped = False
 
+        # Forward pass (like bubble sort)
         for i in range(start, end):
+            # Highlight elements being compared
+            draw_list(draw_info, {i: draw_info.COMPARING, i + 1: draw_info.COMPARING}, True)
+            yield True
+            
             if (lst[i] > lst[i + 1] and ascending) or (lst[i] < lst[i + 1] and not ascending):
                 lst[i], lst[i + 1] = lst[i + 1], lst[i]
                 draw_list(draw_info, {i: draw_info.SWAP1, i + 1: draw_info.SWAP2}, True)
@@ -502,17 +717,35 @@ def cocktail_shaker_sort(draw_info, ascending=True):
         if not swapped:
             break
 
+        # Mark the largest element as sorted
+        draw_list(draw_info, {end: draw_info.SORTED}, True)
+        yield True
+        
         swapped = False
         end -= 1
 
+        # Backward pass
         for i in range(end - 1, start - 1, -1):
+            # Highlight elements being compared
+            draw_list(draw_info, {i: draw_info.COMPARING, i + 1: draw_info.COMPARING}, True)
+            yield True
+            
             if (lst[i] > lst[i + 1] and ascending) or (lst[i] < lst[i + 1] and not ascending):
                 lst[i], lst[i + 1] = lst[i + 1], lst[i]
                 draw_list(draw_info, {i: draw_info.SWAP1, i + 1: draw_info.SWAP2}, True)
                 yield True
                 swapped = True
 
+        # Mark the smallest element as sorted
+        draw_list(draw_info, {start: draw_info.SORTED}, True)
+        yield True
+        
         start += 1
+
+    # Mark any remaining elements as sorted
+    for i in range(start, end + 1):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
 
     return lst
 
@@ -525,13 +758,180 @@ def bogo_sort(draw_info, ascending=True):
                 return False
         return True
 
+    iterations = 0
     while not is_sorted(lst):
         random.shuffle(lst)
-        color_positions = {i: (draw_info.SWAP1 if i % 2 == 0 else draw_info.SWAP2) for i in range(len(lst))}
-        draw_info.SWAP1, draw_info.SWAP2 = draw_info.SWAP2, draw_info.SWAP1
+        iterations += 1
+        
+        color_positions = {}
+        for i in range(len(lst)):
+            if i % 2 == 0:
+                color_positions[i] = draw_info.SWAP1
+            else:
+                color_positions[i] = draw_info.SWAP2
+        
         draw_list(draw_info, color_positions, True)
         yield True
+        
+        if iterations > 1000:
+            break
 
+    # Mark all elements as sorted
+    for i in range(len(lst)):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
+
+    return lst
+
+# New sorting algorithms
+
+def radix_sort(draw_info, ascending=True):
+    lst = draw_info.lst
+    
+    # Find the maximum number to know number of digits
+    max_val = max(lst)
+    
+    # Do counting sort for every digit
+    exp = 1
+    while max_val // exp > 0:
+        yield from counting_sort_by_digit(draw_info, exp, ascending)
+        exp *= 10
+    
+    # Mark all elements as sorted at the end
+    for i in range(len(lst)):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
+    
+    return lst
+
+def counting_sort_by_digit(draw_info, exp, ascending):
+    lst = draw_info.lst
+    n = len(lst)
+    
+    # Initialize count array and output array
+    count = [0] * 10
+    output = [0] * n
+    
+    # Store count of occurrences in count[]
+    for i in range(n):
+        # Highlight current element
+        draw_list(draw_info, {i: draw_info.CURRENT}, True)
+        yield True
+        
+        index = (lst[i] // exp) % 10
+        count[index] += 1
+    
+    # Change count[i] so that count[i] contains actual
+    # position of this digit in output[]
+    for i in range(1, 10):
+        count[i] += count[i - 1]
+    
+    # Build the output array
+    if ascending:
+        i = n - 1
+        while i >= 0:
+            index = (lst[i] // exp) % 10
+            output[count[index] - 1] = lst[i]
+            count[index] -= 1
+            i -= 1
+    else:
+        i = n - 1
+        while i >= 0:
+            index = (lst[i] // exp) % 10
+            output[n - count[index]] = lst[i]
+            count[index] -= 1
+            i -= 1
+    
+    # Copy the output array to lst[]
+    for i in range(n):
+        lst[i] = output[i]
+        draw_list(draw_info, {i: draw_info.SWAP1}, True)
+        yield True
+    
+    return lst
+
+def shell_sort(draw_info, ascending=True):
+    lst = draw_info.lst
+    n = len(lst)
+    
+    # Start with a big gap, then reduce the gap
+    gap = n // 2
+    
+    while gap > 0:
+        # Do a gapped insertion sort
+        for i in range(gap, n):
+            # Add a[i] to the elements that have been gap sorted
+            # Save a[i] in temp and make a hole at position i
+            temp = lst[i]
+            
+            # Highlight current element
+            draw_list(draw_info, {i: draw_info.CURRENT}, True)
+            yield True
+            
+            # Shift earlier gap-sorted elements up until the correct location for a[i] is found
+            j = i
+            while j >= gap:
+                # Highlight both elements being compared (this was the fix)
+                draw_list(draw_info, {j: draw_info.COMPARING, j - gap: draw_info.COMPARING}, True)
+                yield True
+                
+                # Check if we need to swap
+                if (lst[j - gap] > temp and ascending) or (lst[j - gap] < temp and not ascending):
+                    lst[j] = lst[j - gap]
+                    draw_list(draw_info, {j: draw_info.SWAP1, j - gap: draw_info.SWAP2}, True)
+                    yield True
+                    j -= gap
+                else:
+                    break
+            
+            # Put temp (the original a[i]) in its correct location
+            lst[j] = temp
+            draw_list(draw_info, {j: draw_info.SWAP1}, True)
+            yield True
+        
+        gap //= 2
+    
+    # Mark all elements as sorted at the end
+    for i in range(len(lst)):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
+    
+    return lst
+
+def gnome_sort(draw_info, ascending=True):
+    lst = draw_info.lst
+    n = len(lst)
+    index = 0
+    
+    while index < n:
+        # Highlight current position
+        draw_list(draw_info, {index: draw_info.CURRENT}, True)
+        yield True
+        
+        if index == 0:
+            index += 1
+        
+        if index < n:
+            # Highlight elements being compared
+            if index > 0:
+                draw_list(draw_info, {index: draw_info.COMPARING, index - 1: draw_info.COMPARING}, True)
+                yield True
+            
+            if ((lst[index] >= lst[index - 1] and ascending) or 
+                (lst[index] <= lst[index - 1] and not ascending)) or index == 0:
+                index += 1
+            else:
+                # Swap and move back
+                lst[index], lst[index - 1] = lst[index - 1], lst[index]
+                draw_list(draw_info, {index: draw_info.SWAP1, index - 1: draw_info.SWAP2}, True)
+                yield True
+                index -= 1
+    
+    # Mark all elements as sorted at the end
+    for i in range(len(lst)):
+        draw_list(draw_info, {i: draw_info.SORTED}, True)
+        yield True
+    
     return lst
 
 def main():
@@ -551,13 +951,13 @@ def main():
     draw_info.window = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
 
     draw_info.sorting_algo_name = "Bubble Sort"
-    draw_info.size_value = 0.5  # Initialize slider values
+    draw_info.size_value = 0.5  
     draw_info.speed_value = 0.5
     draw_info.numbers_state = 0
 
     sorting = False
     ascending = True
-    dragging_slider = False #Again, copied lang
+    dragging_slider = False
 
     sorting_algorithm = bubble_sort
     sorting_algo_name = "Bubble Sort"
@@ -567,11 +967,16 @@ def main():
         current_speed = int(5 + draw_info.speed_value * 95)
         clock.tick(current_speed)
 
+        # Update timer if sorting is active
+        if sorting:
+            draw_info.update_sorting_timer()
+
         if sorting and not draw_info.manual_mode:
             try:
                 next(sorting_algorithm_generator)
             except StopIteration:
                 sorting = False
+                draw_info.stop_sorting_timer()
                 draw_list(draw_info, clear_bg=True)
         else:
             clickable_buttons, slider_rects, credits_rect = draw(draw_info, sorting_algo_name, ascending)
@@ -582,31 +987,39 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                for rect, action_or_func, name in clickable_buttons:
-                        if rect.collidepoint(pos) and action_or_func == "reset":
-                                    n = int(5 + draw_info.size_value * 95)
-                                    lst = generate_starting_list(n, min_val, max_val)
-                                    draw_info.set_list(lst)
-                                    sorting = False
-                        break   
                 
-            if event.type == pygame.MOUSEBUTTONDOWN and not sorting:
-                pos = pygame.mouse.get_pos()
-
+                # Check for reset button click first
+                for rect, action_or_func, name in clickable_buttons:
+                    if rect.collidepoint(pos) and action_or_func == "reset":
+                        n = int(5 + draw_info.size_value * 95)
+                        lst = generate_starting_list(n, min_val, max_val)
+                        draw_info.set_list(lst)
+                        sorting = False
+                        draw_info.reset_sorting_timer()
+                        break
+                
+                # Check for credits click
                 if credits_rect.collidepoint(pos):
                     import webbrowser
                     webbrowser.open("https://www.youtube.com/@TechWithTim")
                     continue
 
+                # Check for slider interactions
                 for slider_rect, handle_rect, slider_type in slider_rects:
                     if handle_rect.collidepoint(pos) or slider_rect.collidepoint(pos):
                         dragging_slider = slider_type
                         mouse_x = max(slider_rect.left, min(pos[0], slider_rect.right))
                         normalized_value = (mouse_x - slider_rect.left) / slider_rect.width
                         setattr(draw_info, f"{slider_type}_value", normalized_value)
+                        
+                        # Update array size immediately if size slider is changed
+                        if slider_type == "size" and not sorting:
+                            n = int(5 + normalized_value * 95)
+                            lst = generate_starting_list(n, min_val, max_val)
+                            draw_info.set_list(lst)
                         break
                 
-                
+                # Check for other button clicks
                 else:
                     for rect, action_or_func, name in clickable_buttons:
                         if rect.collidepoint(pos):
@@ -614,6 +1027,10 @@ def main():
                                 sorting_algorithm = action_or_func
                                 sorting_algo_name = name
                                 draw_info.sorting_algo_name = name
+                                # Reset sorting if algorithm is changed
+                                sorting = False
+                                draw_info.reset_sorting_timer()
+                                sorting_algorithm_generator = None
                             else:
                                 if action_or_func == "start":
                                     if draw_info.manual_mode and sorting:
@@ -621,14 +1038,17 @@ def main():
                                             next(sorting_algorithm_generator)
                                         except StopIteration:
                                             sorting = False
+                                            draw_info.stop_sorting_timer()
                                             draw_list(draw_info, clear_bg=True)
                                     elif not sorting:
                                         sorting = True
+                                        draw_info.start_sorting_timer()
                                         sorting_algorithm_generator = sorting_algorithm(draw_info, ascending)
                                 elif action_or_func == "mode":
                                     draw_info.manual_mode = not draw_info.manual_mode
                                     if draw_info.manual_mode:
                                         sorting = False
+                                        draw_info.stop_sorting_timer()
                                         draw_list(draw_info, clear_bg=True)
                                 elif action_or_func == "ascending":
                                     ascending = True
@@ -639,8 +1059,6 @@ def main():
                                 elif action_or_func == "exit":
                                     run = False
                             break
-            
-            
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 dragging_slider = None
@@ -668,20 +1086,24 @@ def main():
                     lst = generate_starting_list(n, min_val, max_val)
                     draw_info.set_list(lst)
                     sorting = False
+                    draw_info.reset_sorting_timer()
                 elif event.key == pygame.K_SPACE:
                     if draw_info.manual_mode and sorting:
                         try:
                             next(sorting_algorithm_generator)
                         except StopIteration:
                             sorting = False
+                            draw_info.stop_sorting_timer()
                             draw_list(draw_info, clear_bg=True)
                     elif not sorting:
                         sorting = True
+                        draw_info.start_sorting_timer()
                         sorting_algorithm_generator = sorting_algorithm(draw_info, ascending)
                 elif event.key == pygame.K_m:
                     draw_info.manual_mode = not draw_info.manual_mode
                     if draw_info.manual_mode:
                         sorting = False
+                        draw_info.stop_sorting_timer()
                         draw_list(draw_info, clear_bg=True)
                 elif event.key == pygame.K_a and not sorting:
                     ascending = True
@@ -690,6 +1112,7 @@ def main():
                 elif event.key == pygame.K_n:
                     draw_info.numbers_state = (draw_info.numbers_state + 1) % 3
 
+                # Algorithm selection hotkeys
                 elif event.key == pygame.K_1 and not sorting:
                     sorting_algorithm = bubble_sort
                     sorting_algo_name = "Bubble Sort"
@@ -719,10 +1142,21 @@ def main():
                     sorting_algo_name = "Cocktail Shaker Sort"
                     draw_info.sorting_algo_name = "Cocktail Shaker Sort"
                 elif event.key == pygame.K_8 and not sorting:
+                    sorting_algorithm = radix_sort
+                    sorting_algo_name = "Radix Sort"
+                    draw_info.sorting_algo_name = "Radix Sort"
+                elif event.key == pygame.K_9 and not sorting:
+                    sorting_algorithm = shell_sort
+                    sorting_algo_name = "Shell Sort"
+                    draw_info.sorting_algo_name = "Shell Sort"
+                elif event.key == pygame.K_0 and not sorting:
+                    sorting_algorithm = gnome_sort
+                    sorting_algo_name = "Gnome Sort"
+                    draw_info.sorting_algo_name = "Gnome Sort"
+                elif event.key == pygame.K_b and not sorting:
                     sorting_algorithm = bogo_sort
                     sorting_algo_name = "Bogo Sort"
                     draw_info.sorting_algo_name = "Bogo Sort"
-
                 elif event.key == pygame.K_ESCAPE:
                     run = False
     pygame.quit()

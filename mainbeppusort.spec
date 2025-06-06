@@ -5,9 +5,9 @@ a = Analysis(
     ['mainbeppusort.py'],
     pathex=[],
     binaries=[],
-    datas=[('Roboto/*', 'Roboto'), ('Viga/*', 'Viga'), ('icon.png', '.')],
+    datas=[('icon.png', '.'), ('Roboto', 'Roboto'), ('Viga', 'Viga')],
     hiddenimports=[],
-    hookspath=['hooks'],
+    hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
@@ -35,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
 )
